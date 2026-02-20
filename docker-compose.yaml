@@ -1,66 +1,73 @@
-services:
-  redis:
-    container_name: redis_db
-    image: redis:latest
-    restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - xorazmfc_network
-
-  postgres_db:
-    image: postgres:16
-    restart: always
-    ports:  
-     - 5433:5432
-    environment:
-      - POSTGRES_DB=$DB_NAME
-      - POSTGRES_USER=$DB_USER
-      - POSTGRES_PASSWORD=$DB_PASSWORD
-      - POSTGRES_HOST=$DB_HOST
-      - POSTGRES_PORT=$DB_PORT
-
-    volumes:
-      - postgresql_data:/var/lib/postgresql/data
-    networks:
-      - xorazmfc_network
-
-  web:
-    build: 
-      context: . 
-      dockerfile: Dockerfile
-    ports:
-      - 8000:8000
-    env_file:
-      - ".env"
-    container_name: xorazmfc
-    volumes:
-      - .:/xorazmfc
-    depends_on:
-      - postgres_db
-      - redis
-    networks:
-      - xorazmfc_network
-
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    ports: 
-      - 80:80
-      - 443:443
-    container_name: nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./certs:/etc/nginx/ssl
-    depends_on:
-      - web
-    networks:
-      - xorazmfc_network
+networks:
+  xorazmfc:
+    driver: bridge
 
 volumes:
-  postgresql_data:
+  pg_data: null
+  
+services:
+  nginx:
+    networks:
+      - xorazmfc
+    ports:
+      - ${PORT:-8000}:80
+    volumes:
+      - ./resources/layout/nginx.conf:/etc/nginx/nginx.conf
+      - ./resources/:/usr/share/nginx/html/resources/
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.nginx
+    depends_on:
+      - web
+    restart: always
+    
+  web:
+    networks:
+      - xorazmfc
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.web
+    command: ${COMMAND:-sh ./resources/scripts/entrypoint.sh}
+    environment:
+      - PYTHONPYCACHEPREFIX=/var/cache/pycache
+    volumes:
+      - './:/code'
+    depends_on:
+      - db
+      - redis
+    restart: always
 
-networks:
-  xorazmfc_network:
-    driver: bridge
+  db:
+    image: postgres:17
+    networks:
+      - xorazmfc
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    networks:
+      - xorazmfc
+    image: redis
+    restart: always
+
+  celery:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.web
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - "./:/code"
+    depends_on:
+      - redis
+      - web
+    networks:
+      - xorazmfc
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: always
