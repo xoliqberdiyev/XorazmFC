@@ -54,20 +54,20 @@ services:
       - xorazmfc
     image: redis
     restart: always
-
-  # celery:
-  #   build:
-  #     context: .
-  #     dockerfile: ./docker/Dockerfile.web
-  #   command: celery -A config worker --loglevel=info
-  #   volumes:
-  #     - "./:/code"
-  #   depends_on:
-  #     - redis
-  #     - web
-  #   networks:
-  #     - xorazmfc
-  #   environment:
-  #     - CELERY_BROKER_URL=redis://redis:6379/0
-  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-  #   restart: always
+    
+  celery:
+      build:
+        context: .
+        dockerfile: ./docker/Dockerfile.web
+      command: celery -A core worker --loglevel=info
+      volumes:
+        - "./:/code"
+      depends_on:
+        - redis
+        - web
+      networks:
+        - xorazmfc
+      environment:
+        - CELERY_BROKER_URL=redis://redis:6379/0
+        - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      restart: always

@@ -2,22 +2,12 @@ import os, environ
 from pathlib import Path
 
 env = environ.Env()
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', default=False)
-
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
-# ALLOWED_HOSTS = ["*"]
-
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG', default=False)
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 # Application definition
 INSTALLED_APPS = [
     'jazzmin',
@@ -32,7 +22,6 @@ INSTALLED_APPS = [
     'drf_yasg',
     'rest_framework',
     'corsheaders',
-    # 'debug_toolbar',
     # apps
     'common',
 ]
@@ -47,7 +36,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
